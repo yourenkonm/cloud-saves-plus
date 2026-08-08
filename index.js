@@ -1022,9 +1022,26 @@ async function performAutoSave() {
         }
 
         console.log(`[Cloud Saves Auto] 成功自动覆盖存档: ${targetTag}`);
+        autoSaveStatus = { state: 'success', lastSuccessAt: new Date().toISOString(), lastFailureAt: autoSaveStatus.lastFailureAt, consecutiveFailures: 0, nextRetryAt: null };
+        if (autoSaveRetryTimer) {
+            clearTimeout(autoSaveRetryTimer);
+            autoSaveRetryTimer = null;
+        }
 
     } catch (error) {
         console.error(`[Cloud Saves Auto] 自动覆盖存档失败 (${config?.autoSaveTargetTag}):`, error);
+        const consecutiveFailures = autoSaveStatus.consecutiveFailures + 1;
+        const retryDelay = Math.min(30, 2 ** (consecutiveFailures - 1)) * 60 * 1000;
+        autoSaveStatus = {
+            state: 'failed', lastSuccessAt: autoSaveStatus.lastSuccessAt, lastFailureAt: new Date().toISOString(),
+            consecutiveFailures, nextRetryAt: new Date(Date.now() + retryDelay).toISOString()
+        };
+        if (!autoSaveRetryTimer) {
+            autoSaveRetryTimer = setTimeout(() => {
+                autoSaveRetryTimer = null;
+                performAutoSave();
+            }, retryDelay);
+        }
     } finally {
         currentOperation = null;
     }
@@ -1316,7 +1333,7 @@ async function init(router) {
             try {
                 const status = await getGitStatus();
                 const tempStashStatus = await checkTempStash();
-                res.json({ success: true, status: { ...status, tempStash: tempStashStatus } });
+                res.json({ success: true, status: { ...status, tempStash: tempStashStatus, autoSave: autoSaveStatus } });
             } catch (error) {
                 res.status(500).json({ success: false, message: error.message || '获取状态失败', details: error.details });
             }

@@ -345,6 +345,12 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
+    function escapeHtml(value) {
+        return String(value ?? '').replace(/[&<>'"]/g, character => ({
+            '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;'
+        }[character]));
+    }
+
     function populateAutoSaveTargetOptions() {
         const placeholder = document.createElement('option');
         placeholder.value = '';
@@ -409,39 +415,43 @@ document.addEventListener('DOMContentLoaded', function() {
             const formattedUpdatedAt = updatedAtDate.toLocaleString();
             const descriptionText = save.description || '无描述';
             const creatorName = save.creator || '未知';
+            const safeName = escapeHtml(save.name);
+            const safeTag = escapeHtml(save.tag);
+            const safeDescription = escapeHtml(descriptionText);
+            const safeCreatorName = escapeHtml(creatorName);
             
             saveCard.innerHTML = `
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-start">
                         <div style="flex-grow: 1; margin-right: 15px;">
-                            <h5 class="card-title mb-1">${save.name}</h5>
+                            <h5 class="card-title mb-1">${safeName}</h5>
                             <div class="save-timestamp mb-1">
                                 <small>创建于: ${formattedCreatedAt} | 更新于: ${formattedUpdatedAt}</small>
                             </div>
-                            <div class="save-creator mb-2">操作人: ${creatorName}</div>
-                            <div class="save-description">${descriptionText}</div>
+                            <div class="save-creator mb-2">操作人: ${safeCreatorName}</div>
+                            <div class="save-description">${safeDescription}</div>
                             <!-- 新增：显示并可复制标签名 -->
                             <div class="save-tag-info mt-2">
-                                <small class="text-muted">标签名: <code class="user-select-all">${save.tag}</code></small>
-                                <button class="btn btn-sm btn-outline-secondary copy-tag-btn ms-1" data-tag="${save.tag}" title="复制标签名">
+                                <small class="text-muted">标签名: <code class="user-select-all">${safeTag}</code></small>
+                                <button class="btn btn-sm btn-outline-secondary copy-tag-btn ms-1" data-tag="${safeTag}" title="复制标签名">
                                     <i class="bi bi-clipboard"></i>
                                 </button>
                             </div>
                         </div>
                         <div class="action-buttons flex-shrink-0">
-                            <button class="btn btn-sm btn-primary rename-save-btn" data-tag="${save.tag}" data-name="${save.name}" data-description="${descriptionText}" title="重命名此存档">
+                            <button class="btn btn-sm btn-primary rename-save-btn" data-tag="${safeTag}" data-name="${safeName}" data-description="${safeDescription}" title="重命名此存档">
                                 <i class="bi bi-pencil me-1"></i>重命名
                             </button>
-                            <button class="btn btn-sm btn-success load-save-btn" data-tag="${save.tag}" title="加载此存档">
+                            <button class="btn btn-sm btn-success load-save-btn" data-tag="${safeTag}" title="加载此存档">
                                 <i class="bi bi-cloud-download me-1"></i>加载
                             </button>
-                            <button class="btn btn-sm btn-warning overwrite-save-btn" data-tag="${save.tag}" data-name="${save.name}" title="用当前本地数据覆盖此云存档">
+                            <button class="btn btn-sm btn-warning overwrite-save-btn" data-tag="${safeTag}" data-name="${safeName}" title="用当前本地数据覆盖此云存档">
                                 <i class="bi bi-upload me-1"></i>覆盖
                             </button>
-                            <button class="btn btn-sm btn-outline-info diff-save-btn" data-tag="${save.tag}" data-name="${save.name}" title="比较差异">
+                            <button class="btn btn-sm btn-outline-info diff-save-btn" data-tag="${safeTag}" data-name="${safeName}" title="比较差异">
                                 <i class="bi bi-file-diff me-1"></i>差异
                             </button>
-                            <button class="btn btn-sm btn-danger delete-save-btn" data-tag="${save.tag}" title="删除此存档">
+                            <button class="btn btn-sm btn-danger delete-save-btn" data-tag="${safeTag}" title="删除此存档">
                                 <i class="bi bi-trash me-1"></i>删除
                             </button>
                         </div>
@@ -498,7 +508,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 const saveName = this.dataset.name || tagName; // 获取存档名用于提示
                 showConfirmDialog(
                     `确认覆盖存档 "${saveName}"`,
-                    `<strong>警告：此操作不可逆！</strong><br>您确定要用当前本地的 SillyTavern 数据覆盖云端的 "${saveName}" 存档吗？云端该存档之前的内容将会丢失。`,
+                    `<strong>警告：此操作不可逆！</strong><br>您确定要用当前本地的 SillyTavern 数据覆盖云端的 "${escapeHtml(saveName)}" 存档吗？云端该存档之前的内容将会丢失。`,
                     async () => {
                         await overwriteSave(tagName);
                     },
