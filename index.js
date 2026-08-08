@@ -457,6 +457,13 @@ async function createSave(name, description) {
     }
 }
 
+// A remote tag update is atomic.  Never delete the remote tag before its replacement
+// has been pushed, otherwise an interrupted save can permanently remove the backup.
+async function replaceSaveTag(git, tagName, tagMessage, commitHash) {
+    await git.tag(['-a', '-f', tagName, '-m', tagMessage, commitHash]);
+    await git.push(['origin', `refs/tags/${tagName}:refs/tags/${tagName}`, '--force']);
+}
+
 async function listSaves() {
     try {
         currentOperation = 'list_saves';
@@ -1032,25 +1039,11 @@ async function performAutoSave() {
             throw new Error('无法确定用于自动存档的提交哈希');
         }
 
-        try {
-             await git.tag(['-d', targetTag]);
-        } catch (delLocalErr) { /* Ignore if local doesn't exist */ }
-        try {
-            await git.push(['origin', `:refs/tags/${targetTag}`]);
-        } catch (delRemoteErr) {
-            if (!delRemoteErr.message.includes('remote ref does not exist')) {
-                 console.warn(`[Cloud Saves Auto] 删除远程旧标签 ${targetTag} 时遇到问题:`, delRemoteErr.message);
-            }
-        }
-
         const nowTimestampOverwrite = new Date().toISOString();
         const fullTagMessageOverwrite = `${originalDescription}\nLast Updated: ${nowTimestampOverwrite}`;
-        await git.addAnnotatedTag(targetTag, fullTagMessageOverwrite, newCommitHash);
-
         try {
-             await git.push('origin', targetTag);
+             await replaceSaveTag(git, targetTag, fullTagMessageOverwrite, newCommitHash);
         } catch (pushTagError) {
-             await git.tag(['-d', targetTag]);
              throw pushTagError;
         }
 
@@ -1535,25 +1528,14 @@ async function init(router) {
 
                  if (!newCommitHash) throw new Error('无法确定用于覆盖的提交哈希');
 
-                try { await git.tag(['-d', tagName]); } catch(e) {/*ignore*/}
-                try {
-                    await git.push(['origin', `:refs/tags/${tagName}`]);
-                } catch (delRemoteErr) {
-                     if (!delRemoteErr.message.includes('remote ref does not exist')) {
-                          console.warn(`[cloud-saves] 删除远程旧标签 ${tagName} 时遇到问题:`, delRemoteErr.message);
-                     }
-                }
-
                 const tagMessage = originalDescription;
                 const nowTimestampOverwrite = new Date().toISOString();
                 const fullTagMessageOverwrite = `${tagMessage}\nLast Updated: ${nowTimestampOverwrite}`;
-                await git.addAnnotatedTag(tagName, fullTagMessageOverwrite, newCommitHash);
 
                 try {
-                    await git.push('origin', tagName);
+                     await replaceSaveTag(git, tagName, fullTagMessageOverwrite, newCommitHash);
                 } catch (pushTagError) {
-                     await git.tag(['-d', tagName]);
-                     throw pushTagError;
+                      throw pushTagError;
                 }
 
                 const saveNameMatch = tagName.match(/^save_\d+_(.+)$/);

@@ -3,6 +3,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // 全局变量
     let isAuthorized = false;
     let currentSaves = [];
+    let configuredAutoSaveTargetTag = '';
     let confirmCallback = null;
     let renameTarget = null;
     let initialConfigHasToken = false; // 新增：用于跟踪初始加载时是否有token
@@ -63,7 +64,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const autoSaveEnabledSwitch = document.getElementById('auto-save-enabled');
     const autoSaveOptionsDiv = document.getElementById('auto-save-options');
     const autoSaveIntervalInput = document.getElementById('auto-save-interval');
-    const autoSaveTargetTagInput = document.getElementById('auto-save-target-tag');
+    const autoSaveTargetTagSelect = document.getElementById('auto-save-target-tag');
     const saveAutoSaveSettingsBtn = document.getElementById('save-auto-save-settings-btn');
 
     // 新增：检查更新按钮
@@ -210,7 +211,7 @@ document.addEventListener('DOMContentLoaded', function() {
             
             autoSaveEnabledSwitch.checked = config.autoSaveEnabled || false;
             autoSaveIntervalInput.value = config.autoSaveInterval || 30;
-            autoSaveTargetTagInput.value = config.autoSaveTargetTag || '';
+            configuredAutoSaveTargetTag = config.autoSaveTargetTag || '';
             autoSaveOptionsDiv.style.display = autoSaveEnabledSwitch.checked ? 'flex' : 'none';
             
             isAuthorized = config.is_authorized;
@@ -329,6 +330,7 @@ document.addEventListener('DOMContentLoaded', function() {
             
             if (result.success && result.saves) {
                 currentSaves = result.saves;
+                populateAutoSaveTargetOptions();
                 
                 renderSavesList(currentSaves);
             } else {
@@ -341,6 +343,23 @@ document.addEventListener('DOMContentLoaded', function() {
             console.error('加载存档列表失败:', error);
             showToast('错误', `加载存档列表失败: ${error.message}`, 'error');
         }
+    }
+
+    function populateAutoSaveTargetOptions() {
+        const placeholder = document.createElement('option');
+        placeholder.value = '';
+        placeholder.textContent = '请选择要覆盖的云存档';
+        autoSaveTargetTagSelect.replaceChildren(placeholder);
+
+        currentSaves.forEach(save => {
+            const option = document.createElement('option');
+            option.value = save.tag;
+            option.textContent = `${save.name} (${save.tag})`;
+            autoSaveTargetTagSelect.appendChild(option);
+        });
+
+        const targetStillExists = currentSaves.some(save => save.tag === configuredAutoSaveTargetTag);
+        autoSaveTargetTagSelect.value = targetStillExists ? configuredAutoSaveTargetTag : '';
     }
 
     // 渲染存档列表
@@ -411,19 +430,19 @@ document.addEventListener('DOMContentLoaded', function() {
                         </div>
                         <div class="action-buttons flex-shrink-0">
                             <button class="btn btn-sm btn-primary rename-save-btn" data-tag="${save.tag}" data-name="${save.name}" data-description="${descriptionText}" title="重命名此存档">
-                                <i class="bi bi-pencil"></i>
+                                <i class="bi bi-pencil me-1"></i>重命名
                             </button>
                             <button class="btn btn-sm btn-success load-save-btn" data-tag="${save.tag}" title="加载此存档">
-                                <i class="bi bi-cloud-download"></i>
+                                <i class="bi bi-cloud-download me-1"></i>加载
                             </button>
                             <button class="btn btn-sm btn-warning overwrite-save-btn" data-tag="${save.tag}" data-name="${save.name}" title="用当前本地数据覆盖此云存档">
-                                <i class="bi bi-upload"></i>
+                                <i class="bi bi-upload me-1"></i>覆盖
                             </button>
                             <button class="btn btn-sm btn-outline-info diff-save-btn" data-tag="${save.tag}" data-name="${save.name}" title="比较差异">
-                                <i class="bi bi-file-diff"></i>
+                                <i class="bi bi-file-diff me-1"></i>差异
                             </button>
                             <button class="btn btn-sm btn-danger delete-save-btn" data-tag="${save.tag}" title="删除此存档">
-                                <i class="bi bi-trash"></i>
+                                <i class="bi bi-trash me-1"></i>删除
                             </button>
                         </div>
                     </div>
@@ -645,6 +664,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 
                 // 从列表移除
                 currentSaves = currentSaves.filter(save => save.tag !== tagName);
+                if (configuredAutoSaveTargetTag === tagName) {
+                    configuredAutoSaveTargetTag = '';
+                }
+                populateAutoSaveTargetOptions();
                 renderSavesList(currentSaves);
                 
                 // 刷新状态
@@ -959,7 +982,7 @@ document.addEventListener('DOMContentLoaded', function() {
     async function saveAutoSaveConfiguration() {
         const enabled = autoSaveEnabledSwitch.checked;
         const interval = parseInt(autoSaveIntervalInput.value, 10) || 30;
-        const targetTag = autoSaveTargetTagInput.value.trim();
+        const targetTag = autoSaveTargetTagSelect.value;
 
         if (enabled && !targetTag) {
             showToast('警告', '启用定时存档时，必须指定一个要覆盖的目标存档标签。', 'warning');
@@ -980,6 +1003,7 @@ document.addEventListener('DOMContentLoaded', function() {
             });
 
             if (result.success) {
+                configuredAutoSaveTargetTag = targetTag;
                 showToast('成功', '定时存档设置已保存 (后端将应用更改)', 'success');
                 hideLoading();
                 return true;
@@ -1199,4 +1223,4 @@ document.addEventListener('DOMContentLoaded', function() {
     // 初始化
     init();
 
-}); // DOMContentLoaded 结束 
+}); // DOMContentLoaded 结束

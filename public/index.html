@@ -66,6 +66,8 @@
             display: flex;
             justify-content: flex-end;
             gap: 5px;
+            flex-wrap: wrap;
+            max-width: 260px;
         }
         .save-timestamp {
             color: #aaaaaa;
@@ -296,8 +298,10 @@
                     </div>
                     <div class="col-md-6">
                         <label for="auto-save-target-tag" class="form-label">覆盖的目标存档标签</label>
-                        <input type="text" class="form-control" id="auto-save-target-tag" placeholder="输入要覆盖的存档标签名">
-                        <small class="form-text text-muted">必须是已存在的云存档标签名。每次自动存档将覆盖此存档。</small>
+                        <select class="form-select" id="auto-save-target-tag">
+                            <option value="">请先选择云存档</option>
+                        </select>
+                        <small class="form-text text-muted">仅显示现有云存档；每次自动存档将覆盖所选存档。</small>
                     </div>
                 </div>
                  <button id="save-auto-save-settings-btn" class="btn btn-sm btn-secondary mt-3">保存定时设置</button>
@@ -465,4 +469,4 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js"></script>
     <script src="static/script.js"></script>
 </body>
-</html> 
+</html>
