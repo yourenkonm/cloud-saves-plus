@@ -5,6 +5,9 @@
   "main": "index.js",
   "author": "Your Name / AI Assistant",
   "license": "MIT",
+  "scripts": {
+    "test": "node --test"
+  },
   "keywords": [
     "sillytavern",
     "plugin",

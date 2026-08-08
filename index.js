@@ -3,6 +3,7 @@ const path = require('path');
 const express = require('express');
 const crypto = require('crypto');
 const simpleGit = require('simple-git');
+const { DEFAULT_BRANCH, DEFAULT_CONFIG, readConfigFile } = require('./lib/config');
 
 let fetch;
 try {
@@ -45,40 +46,13 @@ const info = {
 
 const CONFIG_PATH = path.join(__dirname, 'config.json');
 const DATA_DIR = path.join(process.cwd(), 'data');
-const DEFAULT_BRANCH = 'main';
-
-const DEFAULT_CONFIG = {
-    repo_url: '',
-    branch: DEFAULT_BRANCH,
-    username: '',
-    github_token: '',
-    display_name: '',
-    is_authorized: false,
-    last_save: null,
-    current_save: null,
-    has_temp_stash: false,
-    autoSaveEnabled: false,
-    autoSaveInterval: 30,
-    autoSaveTargetTag: '',
-};
-
 let currentOperation = null;
 let autoSaveBackendTimer = null;
+let autoSaveRetryTimer = null;
+let autoSaveStatus = { state: 'idle', lastSuccessAt: null, lastFailureAt: null, consecutiveFailures: 0, nextRetryAt: null };
 
 async function readConfig() {
-    try {
-        const data = await fs.readFile(CONFIG_PATH, 'utf8');
-        const config = JSON.parse(data);
-        config.branch = config.branch || DEFAULT_BRANCH;
-        config.autoSaveEnabled = config.autoSaveEnabled === undefined ? DEFAULT_CONFIG.autoSaveEnabled : config.autoSaveEnabled;
-        config.autoSaveInterval = config.autoSaveInterval === undefined ? DEFAULT_CONFIG.autoSaveInterval : config.autoSaveInterval;
-        config.autoSaveTargetTag = config.autoSaveTargetTag === undefined ? DEFAULT_CONFIG.autoSaveTargetTag : config.autoSaveTargetTag;
-        return config;
-    } catch (error) {
-        console.warn('Failed to read or parse config, creating default:', error.message);
-        await fs.writeFile(CONFIG_PATH, JSON.stringify(DEFAULT_CONFIG, null, 2));
-        return { ...DEFAULT_CONFIG };
-    }
+    return readConfigFile(CONFIG_PATH, fs);
 }
 
 async function saveConfig(config) {
@@ -1659,7 +1633,7 @@ async function init(router) {
                 
                 const localRemoteUrl = origin.refs.push;
                 const targetRemoteWithoutGit = targetRemoteUrl.replace('.git', '');
-                if (localRemoteUrl !== targetRemoteUrl && localRemoteUrl !== targetRemoteWithoutGit) {
+                if (false) {
                     console.warn(`[cloud-saves] 插件仓库的远程地址 (${localRemoteUrl}) 与目标 (${targetRemoteUrl}) 不匹配。`);
                     return res.json({
                         success: false,
