@@ -959,15 +959,28 @@ async function performAutoSave() {
     let git;
     try {
         config = await readConfig();
-        if (!config.is_authorized || !config.autoSaveEnabled || !config.autoSaveTargetTag) {
+        if (!config.is_authorized || !config.autoSaveEnabled || (config.autoSaveMode !== 'rotate' && !config.autoSaveTargetTag)) {
             console.log('[Cloud Saves Auto] 自动存档条件不满足，跳过。');
             currentOperation = null;
             return;
         }
 
         const targetTag = config.autoSaveTargetTag;
-        console.log(`[Cloud Saves Auto] 开始自动覆盖存档到: ${targetTag}`);
         git = await getGitInstance();
+        if (config.autoSaveMode === 'rotate') {
+            const timestamp = new Date().toISOString();
+            const result = await createSave(`自动存档 ${timestamp}`, 'Automatic rotating save');
+            if (!result.success) throw new Error(result.message);
+            const tags = (await git.raw('tag', '-l', 'save_*', '--sort=-creatordate')).trim().split('\n').filter(Boolean);
+            const retain = config.autoSaveRetentionCount || 10;
+            for (const tag of tags.slice(retain)) {
+                await git.tag(['-d', tag]);
+                await git.push(['origin', `:refs/tags/${tag}`]);
+            }
+            autoSaveStatus = { state: 'success', lastSuccessAt: timestamp, lastFailureAt: autoSaveStatus.lastFailureAt, consecutiveFailures: 0, nextRetryAt: null };
+            return;
+        }
+        console.log(`[Cloud Saves Auto] 开始自动覆盖存档到: ${targetTag}`);
         const branchToUse = config.branch || DEFAULT_BRANCH;
 
         let originalDescription = `Auto Save Overwrite: ${targetTag}`;
