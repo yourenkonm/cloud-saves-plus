@@ -297,11 +297,22 @@
                         <input type="number" class="form-control" id="auto-save-interval" min="1" value="30">
                     </div>
                     <div class="col-md-6">
+                        <label for="auto-save-mode" class="form-label">自动存档模式</label>
+                        <select class="form-select" id="auto-save-mode">
+                            <option value="overwrite">覆盖固定存档</option>
+                            <option value="rotate">轮换新建存档</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6">
                         <label for="auto-save-target-tag" class="form-label">覆盖的目标存档标签</label>
                         <select class="form-select" id="auto-save-target-tag">
                             <option value="">请先选择云存档</option>
                         </select>
                         <small class="form-text text-muted">仅显示现有云存档；每次自动存档将覆盖所选存档。</small>
+                    </div>
+                    <div class="col-md-6" id="auto-save-retention-group" style="display: none;">
+                        <label for="auto-save-retention" class="form-label">轮换存档保留数量</label>
+                        <input type="number" class="form-control" id="auto-save-retention" min="1" value="10">
                     </div>
                 </div>
                  <button id="save-auto-save-settings-btn" class="btn btn-sm btn-secondary mt-3">保存定时设置</button>

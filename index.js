@@ -1112,6 +1112,8 @@ async function init(router) {
                     autoSaveEnabled: config.autoSaveEnabled || false,
                     autoSaveInterval: config.autoSaveInterval || 30,
                     autoSaveTargetTag: config.autoSaveTargetTag || '',
+                    autoSaveMode: config.autoSaveMode || 'overwrite',
+                    autoSaveRetentionCount: config.autoSaveRetentionCount || 10,
                     has_github_token: !!config.github_token,
                 };
                 // console.log('[cloud-saves][DEBUG] Sending GET /config response:', JSON.stringify(safeConfig));
@@ -1125,7 +1127,7 @@ async function init(router) {
             try {
                 const {
                     repo_url, github_token, display_name, branch, is_authorized,
-                    autoSaveEnabled, autoSaveInterval, autoSaveTargetTag
+                    autoSaveEnabled, autoSaveInterval, autoSaveTargetTag, autoSaveMode, autoSaveRetentionCount
                 } = req.body;
                 let currentConfig = await readConfig();
                 // DEBUG: console.log('[cloud-saves][DEBUG] Received POST /config request body:', JSON.stringify(req.body, (key, value) => key === 'github_token' && value ? '******' : value)); // Mask token in log
@@ -1155,6 +1157,8 @@ async function init(router) {
                 if (autoSaveTargetTag !== undefined) {
                     currentConfig.autoSaveTargetTag = autoSaveTargetTag.trim();
                 }
+                if (autoSaveMode !== undefined) currentConfig.autoSaveMode = autoSaveMode === 'rotate' ? 'rotate' : 'overwrite';
+                if (autoSaveRetentionCount !== undefined) currentConfig.autoSaveRetentionCount = Math.max(1, parseInt(autoSaveRetentionCount, 10) || 10);
 
                 await saveConfig(currentConfig);
                 // DEBUG: console.log('[cloud-saves][DEBUG] Config saved successfully after POST /config.');
@@ -1169,7 +1173,9 @@ async function init(router) {
                     username: currentConfig.username,
                     autoSaveEnabled: currentConfig.autoSaveEnabled,
                     autoSaveInterval: currentConfig.autoSaveInterval,
-                    autoSaveTargetTag: currentConfig.autoSaveTargetTag
+                    autoSaveTargetTag: currentConfig.autoSaveTargetTag,
+                    autoSaveMode: currentConfig.autoSaveMode,
+                    autoSaveRetentionCount: currentConfig.autoSaveRetentionCount
                 };
                 // console.log('[cloud-saves][DEBUG] Sending POST /config response:', JSON.stringify(safeConfig));
                 res.json({ success: true, message: '配置保存成功', config: safeConfig });

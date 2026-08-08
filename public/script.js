@@ -64,6 +64,9 @@ document.addEventListener('DOMContentLoaded', function() {
     const autoSaveEnabledSwitch = document.getElementById('auto-save-enabled');
     const autoSaveOptionsDiv = document.getElementById('auto-save-options');
     const autoSaveIntervalInput = document.getElementById('auto-save-interval');
+    const autoSaveModeSelect = document.getElementById('auto-save-mode');
+    const autoSaveRetentionInput = document.getElementById('auto-save-retention');
+    const autoSaveRetentionGroup = document.getElementById('auto-save-retention-group');
     const autoSaveTargetTagSelect = document.getElementById('auto-save-target-tag');
     const saveAutoSaveSettingsBtn = document.getElementById('save-auto-save-settings-btn');
 
@@ -212,6 +215,9 @@ document.addEventListener('DOMContentLoaded', function() {
             autoSaveEnabledSwitch.checked = config.autoSaveEnabled || false;
             autoSaveIntervalInput.value = config.autoSaveInterval || 30;
             configuredAutoSaveTargetTag = config.autoSaveTargetTag || '';
+            autoSaveModeSelect.value = config.autoSaveMode || 'overwrite';
+            autoSaveRetentionInput.value = config.autoSaveRetentionCount || 10;
+            updateAutoSaveModeUI();
             autoSaveOptionsDiv.style.display = autoSaveEnabledSwitch.checked ? 'flex' : 'none';
             
             isAuthorized = config.is_authorized;
@@ -991,10 +997,12 @@ document.addEventListener('DOMContentLoaded', function() {
     // --- 修改：保存定时存档设置函数 (不再直接控制定时器) ---
     async function saveAutoSaveConfiguration() {
         const enabled = autoSaveEnabledSwitch.checked;
+        const mode = autoSaveModeSelect.value;
         const interval = parseInt(autoSaveIntervalInput.value, 10) || 30;
         const targetTag = autoSaveTargetTagSelect.value;
+        const retentionCount = parseInt(autoSaveRetentionInput.value, 10) || 10;
 
-        if (enabled && !targetTag) {
+        if (enabled && mode === 'overwrite' && !targetTag) {
             showToast('警告', '启用定时存档时，必须指定一个要覆盖的目标存档标签。', 'warning');
             return false;
         }
@@ -1008,8 +1016,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 display_name: displayNameInput.value.trim(),
                 branch: branchInput.value.trim() || 'main',
                 autoSaveEnabled: enabled,
+                autoSaveMode: mode,
                 autoSaveInterval: interval,
-                autoSaveTargetTag: targetTag
+                autoSaveTargetTag: targetTag,
+                autoSaveRetentionCount: retentionCount
             });
 
             if (result.success) {
@@ -1026,6 +1036,12 @@ document.addEventListener('DOMContentLoaded', function() {
             showToast('错误', `保存定时设置失败: ${error.message}`, 'error');
             return false;
         }
+    }
+
+    function updateAutoSaveModeUI() {
+        const rotating = autoSaveModeSelect.value === 'rotate';
+        document.getElementById('auto-save-target-tag').closest('.col-md-6').style.display = rotating ? 'none' : '';
+        autoSaveRetentionGroup.style.display = rotating ? '' : 'none';
     }
 
     // 显示确认对话框 ... (保持不变) ...
@@ -1142,6 +1158,7 @@ document.addEventListener('DOMContentLoaded', function() {
     safeAddEventListener(autoSaveEnabledSwitch, 'change', () => {
         autoSaveOptionsDiv.style.display = autoSaveEnabledSwitch.checked ? 'flex' : 'none';
     }, 'auto-save-enabled');
+    safeAddEventListener(autoSaveModeSelect, 'change', updateAutoSaveModeUI, 'auto-save-mode');
     safeAddEventListener(saveAutoSaveSettingsBtn, 'click', saveAutoSaveConfiguration, 'save-auto-save-settings-btn');
 
     // 新增：检查更新按钮事件
